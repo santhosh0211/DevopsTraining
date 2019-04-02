@@ -1,0 +1,772 @@
+kubernetes notes_command
+
+
+https://drive.google.com/drive/folders/1rRvnGi3XAWJG9RNR7h-0LE9QkUQIa3xC?usp=sharing
+
+
+Docker offline installer
+
+https://drive.google.com/drive/folders/10W8ML9PgRGf9CLNxoHdGO0GoEXQDhWxe?usp=sharing
+
+
+file1:  docker-ce-18.06.0.ce-3.el7.x86_64.rpm
+
+file 2:  container-selinux-2.9-4.el7.noarch.rpm
+
+-----------------------------------------------------------------------------------------------
+
+Hexakubes_mountpointlink
+
+mkdir ./share
+
+sudo mount -t cifs //dockerstgaccount.file.core.windows.net/kubernetes ./share -o vers=3.0,username=dockerstgaccount,password=t3LeshJIe4hKoY/vn/YQ0UuulFrWAHXbaTC/OCIESvw3oy99GRpadWalveybCFz/qBDap9I6D/uO60C8dWV8OA==,dir_mode=0777,file_mode=0777,sec=ntlmssp
+
+-------------------------------
+
+Steps to setup kubernetes labs
+
+Perform the below step in all the 3 vms
+
+
+
+
+1.setup hostnames with ipaddress
+
+vi /etc/hosts
+
+
+192.168.198.188 kmaster
+192.168.198.189 knode
+192.168.198.190 knode2
+
+2. disable the selinux and enable  br_netfilter Kernel Module (iptables for filtering,pods communication)
+
+vi /etc/selinux/config
+
+set to disabled
+
+disable the firewall
+
+systemctl status firewalld
+systemctl stop firewalld
+systemctl disable firewalld
+systemctl status firewalld
+
+
+3. set the netfilter kernel modules (iptables for filterings for pods commu
+nications)
+
+
+modprobe br_netfilter
+
+echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+4. Disable SWAP
+
+swapoff -a
+
+5.vi /etc/fstab   (not required for Azure Linux vms)
+
+comment
+
+# #/dev/mapper/cl-swap
+
+
+6.  Install Docker CE Docker Community Edition (CE) and 
+ package dependencies for docker-ce.
+
+a.   yum install -y yum-utils device-mapper-persistent-data lvm2
+
+goto the directory cd ./share
+
+b.  yum install policycoreutils-python  (this step is required for azure vm only)
+
+
+
+c.    rpm -ivh container-selinux-2.9-4.el7.noarch.rpm
+
+d.    wget https://rpmfind.net/linux/centos/7.6.1810/os/x86_64/Packages/libtool-ltdl-2.4.2-22.el7_3.x86_64.rpm   (this step is required for azure vm only)
+
+
+e.  rpm -ivh libtool-ltdl-2.4.2-22.el7_3.x86_64.rpm  (this step is required for azure vm only)
+
+
+f.  rpm -ivh docker-ce-18.06.0.ce-3.el7.x86_64.rpm
+
+
+docker -v
+
+
+7.   Install Kubernetes
+
+Add the kubernetes repository to the centos 7 system by running the following command.
+
+copy and paste the below in commandline
+
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
+        https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOF
+
+8.  yum install -y kubelet kubeadm kubectl
+
+After the installation is complete, restart all those servers.
+
+sudo reboot
+
+
+
+9. Log in again to the server and start the services, docker and kubelet.
+
+systemctl start docker && systemctl enable docker
+systemctl start kubelet && systemctl enable kubelet
+
+10. Change the cgroup-driver
+cgroups (control groups) is a Linux kernel feature that limits, accounts for, and isolates the resource usage (CPU, memory, disk I/O, network, etc.) of a collection of processes.
+
+
+
+docker info | grep -i cgroup
+
+
+Now run the command below to change the kuberetes cgroup-driver to 'cgroupfs'.
+
+**** sed -i 's/cgroup-driver=systemd/cgroup-driver=cgroupfs/g' /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+
+
+Reload the systemd system and restart the kubelet service.
+
+systemctl daemon-reload
+systemctl restart kubelet
+
+complete the above steps in all machines( master node machines)
+
+
+------------------------------------------------------------------------------------------------------------------
+
+
+
+
+Step 11   - Kubernetes Cluster Initialization (in Master Machine Only)
+
+kubeadm init --apiserver-advertise-address=192.168.198.188 --pod-network-cidr=10.244.0.0/16
+
+
+
+
+
+
+
+example:   kubeadm init --apiserver-advertise-address=192.168.187.210 (masterip) --pod-network-cidr=10.244.0.0/16  (pod network called flannel (virtual network)ip series)
+
+
+Note:
+
+--apiserver-advertise-address = determines which IP address Kubernetes should advertise its API server on.
+
+--pod-network-cidr = specify the range of IP addresses for the pod network. We're using the 'flannel' virtual network. If you want to use another pod network such as weave-net or calico, change the range IP address
+
+
+
+
+sub steps of Step-11
+
+  1.  mkdir -p $HOME/.kube
+  2. sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  3.  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+4. kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+
+---------------------------------------------------------------
+
+
+
+--------------------------------------------------------------------------------------
+
+commands
+
+kubectl get nodes
+
+kubectl get pods --all-namespaces
+
+kubectl version
+
+kubectl get nodes -o wide
+
+
+
+
+to create a pod using commandline
+
+syntax:  kubectl run <podname> --image= imagename --generator=run-pod/v1
+
+kubectl run hexapod1 --image=nginx --port=80 --generator=run-pod/v1
+
+kubectl get pods -o wide
+
+kubectl describe pod hexapod1
+
+
+
+----------------------------------------------
+
+
+
+git url for labs(yaml labs)
+
+https://github.com/devopstraining4/kubenetes_dt.git
+
+
+
+to create a pod using yaml file 
+
+
+kubectl create -f https://raw.githubusercontent.com/devopstraining4/kubenetes_dt/master/pod.yml
+
+
+---------------------------------------------------------------------------
+
+
+Steps to Setup the dashboard_new 
+
+
+
+Step-1: Deploy the dashboard Application
+
+
+kubectl create -f https://raw.githubusercontent.com/kubernetes/dashboard/master/aio/deploy/recommended/kubernetes-dashboard.yaml
+
+Step-2: create user for Dashboard  using below yaml file
+
+vi usercreation.yml
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-user
+  namespace: kube-system
+
+kubectl create -f usercreation.yml
+
+Step-3: create a service account using below yaml file
+
+vi serviceaccount.yml
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin-user
+  namespace: kube-system
+
+kubectl create -f serviceaccount.yml
+  
+kubectl get serviceaccount --all-namespaces | grep dashboard
+
+
+  
+  
+step-4 ----- capturing the token for admin-user
+
+kubectl -n kube-system describe secret $(kubectl -n kube-system get secret | grep admin-user | awk '{print $1}')
+
+
+copy the token
+
+like this:   
+
+eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJhZG1pbi11c2VyLXRva2VuLWg0bGt4Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluLXVzZXIiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiJlMWJlYmY0MS0zZDBkLTExZTktOGU5YS0wMDBjMjlmZGU1ZjYiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZS1zeXN0ZW06YWRtaW4tdXNlciJ9.xrlBetgBZAseWBQZZ6HKjwxhHKL1U0qgNb9y7gIWTSQrhbAe-o1fDOT5-CrROCySiZbxREC_h-eWeWxboAZp9DXY0v9vesxIQW6J2uaKv4jqlCxu2PfVrHrag3Nel57Ib3AmOkVKygGlSJJDjxzU5Qf2QQmP0eSiB6J33Sl66GckAJAANh24-W_atTEFoZHr3E1yspGP5hiJRMZRZP6mQcsO8QQPklktGTa6U_viLuiSAKng8fF4IYS6DL_iwXHX8_oyEEmNYFltXvS3bZrSdzUxoQQNHZuTsOj_E0sWfvUt9por7mqgS6ZErZEFUBzrFly4LCBIrEvqT_8zo7zLlQ
+
+Copy this
+
+
+Step-5 access the console Kubectl will make Dashboard available at below url
+
+kubectl proxy
+
+
+http://localhost:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/.
+
+
+Token
+
+paste the token
+
+-------------------------------------------------------------------------------------
+
+
+
+8th March
+
+Replication Controller Lab (kubectl or yaml)
+
+lab of RC using kubectl
+
+Syntax: kubectl run <name for the replication controller> --image=<image name> --generator=run/v1
+
+Step-1:  create a replication controller
+
+kubectl run nginx-rc --image=nginx --port=80 --generator=run/v1
+
+Step-2: view the RC
+
+kubectl get rc
+
+Step-3: view the pods created by rc
+
+kubectl get pods -o wide
+
+Step-4:  to scale up  the pods replicas
+
+Syntax: kubectl scale <resourcetype> <replicationcontrollername> --replicas=<no of replica>
+
+kubectl scale replicationcontroller nginx-rc --replicas=4
+
+
+
+Step-5:  to scale down the pods replicas
+
+Syntax: kubectl scale <resourcetype> <replicationcontrollername> --replicas=<no of replica>
+
+kubectl scale replicationcontroller nginx-rc --replicas=1
+
+
+Step-6:  to delete the rc
+
+
+
+kubectl delete replicationcontroller nginx-rc
+
+--------------
+
+creating rc using yaml file
+
+Step-1:  create a replication controller
+
+kubectl create -f  https://raw.githubusercontent.com/devopstraining4/kubenetes_dt/master/tomcatservice/rc_tomcat.yml
+
+Step-2: view the RC
+
+kubectl get rc
+
+Step-3: view the pods created by rc
+
+kubectl get pods -o wide
+
+Step-4:  to scale up  the pods replicas
+
+Syntax: kubectl scale <resourcetype> <replicationcontrollername> --replicas=<no of replica>
+
+kubectl scale replicationcontroller rc-tomcat --replicas=3
+
+------------------------------------------------------------------------
+
+Lab on Labels
+
+Labels creation using kubectl
+
+1. to create a pod with labels.
+
+Syntax: kubectl run <pod name> --image=<container image name> --port=<container port> --labels="<value1>,<value2>" --generator=run-pod/v1
+
+Example: kubectl run podalabeltest --image=nginx --port=80 --labels="app=web,env=dev" --generator=run-pod/v1
+
+kubectl describe pod podalabeltest
+
+
+2.list the all pod labels 
+
+kubectl get pods --show-labels
+
+3. use the label selector to filter the required pods
+
+kubectl get pods -l env=test
+-------------------------------------------------------------------------
+
+
+Labels creation using yaml file
+
+1. to create a pod with label using yaml file
+
+kubectl create -f https://raw.githubusercontent.com/devopstraining4/kubenetes_dt/master/tomcat1.yml
+
+
+2.list the all pod labels 
+
+kubectl get pods --show-labels
+
+3. use the label selector to filter the required pods
+
+kubectl get pods -l env=test
+
+-------------------------------------------------------------
+
+Labs on Namespaces
+
+1. kubectl get namespaces
+NAME          STATUS    AGE
+default       Active    19h
+kube-public   Active    19h
+kube-system   Active    19h
+
+
+2.To create a namespace, use kubectl create command.
+
+Syntax: kubectl create namespace <namespace name>
+
+Example: kubectl create namespace flipkartproject
+
+
+3. create the namespace through yaml
+kubectl apply -f namespace.yml
+
+
+4.CREATE A NEW POD IN CUSTOM NAMESPACE
+
+    Use the kubectl command to create a POD
+
+Syntax: kubectl run <pod name> --image=<image name> --port=<container port> --generator=run-pod/v1 -n <namespace name>
+
+**kubectl run testns-pod --image=nginx --port=80 --generator=run-pod/v1 -n flipkartproject
+
+
+5.    Verify the pod details using the below command.
+
+Syntax: kubecl get pods --namespace <namespace name>
+
+Example: kubectl get pods --namespace flipkartproject
+
+6.To delete all the pods in a namespace.
+
+Syntax: kubectl delete pods --all --namespace <namespace name>
+* kubectl delete pods --all --namespace flipkartproject
+
+7. to delete the namespace
+kubectl delete namespace flipkartproject
+
+
+-----------------------------------
+
+
+services lab
+
+Step-1: to list the services
+
+kubectl get svc
+
+
+Step-2: create pod with service
+
+
+kubectl create -f https://raw.githubusercontent.com/devopstraining4/kubenetes_dt/master/servicesexample/service.yml
+
+
+Step-3:  to list the services
+
+kubectl get svc
+
+It will create a IPAddress to access host port
+
+----------------------------------------------------------------------------------------------
+
+
+Service(Better Understanding)
+
+
+Step-1: download my kubernetes labs repo
+
+cd /opt
+
+git --version
+
+yum install git  ( if git is not installed)
+
+git clone https://github.com/devopstraining4/kubenetes_dt.git
+
+Step-2: 
+goto cd /opt/kubenetes_dt/tomcatservice
+
+Open the vi  svc_tomcat_external.yml
+
+change 192.168.198.132 to your external IP (base ip or ethernet IP)
+
+
+Step -3:  execute all 3 yaml files
+
+kubectl create -f rc_tomcat.yml
+
+kubectl create -f svc_tomcat_clusterip.yml
+
+kubectl create -f svc_tomcat_external.yml
+
+
+
+Step-4:  to list the services
+
+kubectl get svc
+
+It will create a IPAddress to access host port
+
+it will assign the external IP as well
+
+
+---------------------------------------------------------
+
+
+Labs on Deployment
+
+Deployment Example Steps:
+
+kubectl get deploy
+
+kubectl create -f https://raw.githubusercontent.com/devopstraining4/kubenetes_dt/master/deployment/deployment1.yml
+
+kubectl get deploy
+
+kubectl get rs
+
+kubectl get pods -o wide
+
+kubectl apply -f https://raw.githubusercontent.com/devopstraining4/kubenetes_dt/master/deployment/deployment2.yml
+
+kubectl get deploy
+
+kubectl rollout status deploy/tomcat
+
+kubectl rollout history deploy/tomcat
+
+kubectl rollout undo deploy/tomcat --to-revision=1
+
+kubectl rollout history deploy/tomcat
+
+
+------------------------------------------------------------------------------------------------------------------
+
+
+Lab on Volumes
+
+
+Volumes Commands
+
+kubectl get pv
+kubectl get pvc
+kubectl get pods -o wide
+
+kubectl create -f https://raw.githubusercontent.com/devopstraining4/kubenetes_dt/master/volumesexample1/pv1.yml
+
+kubectl create -f https://raw.githubusercontent.com/devopstraining4/kubenetes_dt/master/volumesexample1/myclaim1.yml
+
+kubectl create -f https://raw.githubusercontent.com/devopstraining4/kubenetes_dt/master/volumesexample1/pod_nginx_volume.yml
+
+kubectl get pv
+kubectl get pvc
+kubectl get pods -o wide
+
+--------------------------------------------------------------------------
+
+
+
+Autoscalling
+
+kubectl create -f deployment1.yml
+kubectl get deployment
+kubectl get rs
+kubectl get pods
+
+
+
+kubectl  autoscale  deployment  tomcat --min=2 --max=5 --cpu-percent=10
+
+kubectl get hpa
+
+kubectl get hpa/tomcat -o yaml > tomcat-hpa.yml
+------------------------------------
+
+Secrets
+
+
+creating secret using text file
+
+kubectl create secret generic tomcat-secrets --from-file=./username.txt --from-file=./password.txt
+
+
+kubectl get secrets
+
+kubectl describe secret tomcat-secrets
+
+---------------------------------------------------------------------------------------------------------
+creating secret using yaml file
+
+
+echo -n 'user1' | base64
+
+echo -n 'user1' | base64
+
+
+
+
+vi secretsample.yml 
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysecret
+  type: Opaque
+data:
+  username: b3JhY2xlc2VydmVyYWRtaW4x
+  password: aW5kaWExMjM0
+
+
+
+kubectl create -f secretsample.yml --validate=false
+
+
+
+
+kubectl get secret mysecret -o yaml
+
+echo 'em9tYmll' | base64 --decode
+
+-------------------------------------------------------------------
+
+Ingress labs
+
+
+cd /opt
+
+git clone https://github.com/devopstraining4/kubernetes_ingress_example.git
+
+------------------------------------------------------------------------------------
+
+
+
+
+kompose labs commands
+
+
+cd /opt 
+
+git clone https://github.com/devopstraining4/kubenetes_dt.git
+
+
+
+
+1. yum install -y epel-release
+
+2. yum -y install kompose
+
+3. copy the docker compose labs to /opt
+
+4. cd /opt/kcompose/dockercompose 
+
+kompose convert -f docker-compose.yml -o hexawarekompose.yml
+
+
+ check kubectl get pods kubectl get deployment 
+
+kubectl get svc
+
+5. kubectl create -f hexawarekompose.yml    or kompose up
+
+6.kubectl get pods
+
+7.kubectl get deployment
+
+8.kubectl get svc
+
+9. kubectl get pv
+
+10. kubectl get pvc
+
+to delete all (delete pods,svc,deployment,
+
+-------------------------------------
+
+
+
+otherway to install kompose
+
+curl -L https://github.com/kubernetes/kompose/releases/download/v1.17.0/kompose-linux-amd64 -o kompose
+
+chmod +x kompose
+
+sudo mv ./kompose /usr/local/bin/kompose
+
+---------------------------------
+
+
+
+kubernetes job  labs
+
+
+
+job commands
+
+Job1- Python
+
+kubectl create -f https://raw.githubusercontent.com/devopstraining4/kubenetes_dt/master/jobs/pythonjob.yml
+
+
+Job2- centos
+
+kubectl create -f https://raw.githubusercontent.com/devopstraining4/kubenetes_dt/master/jobs/job1.yml
+
+
+
+kubectl get jobs
+
+kubectl get pods --show-all
+
+kubectl describe jobs/jobname
+
+kubectl logs
+
+---------------------
+
+
+Ingress labs
+
+
+cd /opt
+
+git clone https://github.com/devopstraining4/kubernetes_ingress_example.git-----------------
+
+
+-----------------------------------
+
+
+
+how to create  multiple container in a pod + json
+
+kubectl create -f https://raw.githubusercontent.com/devopstraining4/kubenetes_dt/master/json/pod_2_containers_nginx-mysql.json  --validate=false
+
+List Containers by Pod
+
+\
+
+
+
+--------------------------
+
+google drive url
+
+https://drive.google.com/drive/folders/1rRvnGi3XAWJG9RNR7h-0LE9QkUQIa3xC?usp=sharing
+
+
+
+
+-----------------------------
+
+get container running in a pod - kubectl get pods -o=custom-columns=NAME:.metadata.name,CONTAINERS:.spec.containers[*].name
