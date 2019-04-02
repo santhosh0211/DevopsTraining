@@ -1,0 +1,468 @@
+Docker Session
+
+Rough Notes/Commands
+
+https://drive.google.com/drive/folders/1rRvnGi3XAWJG9RNR7h-0LE9QkUQIa3xC?usp=sharing
+______________________________________________________________
+Installation of Docker CE
+
+Removing -Docker
+
+sudo yum remove docker docker-common docker-selinux docker-engine-selinux docker-engine docker-ce
+
+sudo yum remove docker docker-common docker-selinux docker-engine
+
+
+Installing the Docker
+
+sudo yum install yum-utils device-mapper-persistent-data lvm2
+
+sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+sudo yum install docker-ce
+sudo systemctl start docker
+sudo systemctl status docker
+sudo systemctl enable docker
+
+
+docker -v
+
+____________________________________________________________________
+
+
+portainer
+
+docker pull portainer/portainer
+
+
+You can try out the public demo instance: http://demo.portainer.io/ (login with the username admin and the password tryportainer).
+
+1.
+
+2. docker run -d -p 9000:9000 -v /var/run/docker.sock:/var/run/docker.sock portainer/portainer
+
+
+4. http://ipaddress:9000/
+
+(login with the username admin and the password  ).
+
+-----------------------------------------------------------------------------------
+
+
+Labs---Docker Images
+
+
+Step-1:  Create the DockerFile
+
+vi Dockerfile
+
+FROM centos:latest
+MAINTAINER admin
+RUN yum -y install httpd
+COPY index.html /var/www/html/
+EXPOSE 80
+CMD ["/usr/sbin/httpd","-D","FOREGROUND"]
+
+
+Step-2 Building the Images using docker build command
+
+docker build -t <imagename> . or path of docker file
+
+or 
+docker build -t <imagename>  path of docker file
+
+Step-3: to run the container
+
+docker run -it --name <containername> imagename
+
+docker run -it --name 
+
+
+--------------------------------------------------------------------------
+
+Example of Tomcat
+
+git --version
+
+git clone https://github.com/devopstraining4/tomcatsupermarket.git
+
+docker build -t mytomcatimg1 .
+docker run -it --rm -p 8082:8080 --name mytomcatc1 mytomcatimg1
+docker run -it --rm -p 8084:8080 --name mytomcatc2 mytomcatimg1
+------------------------------------------------------------------------------------------
+
+portainer
+
+docker pull portainer/portainer
+
+
+You can try out the public demo instance: http://demo.portainer.io/ (login with the username admin and the password tryportainer).
+
+1.docker pull portainer/portainer
+
+2. docker run -d -p 9000:9000 -v /var/run/docker.sock:/var/run/docker.sock portainer/portainer
+
+
+3. http://ipaddress:9000/
+------------------------------------------
+
+
+Working with container shell
+
+docker run -it --rm -p 8082:8080 --name mytomcatc1 mytomcatimg1 (Dont use now)
+
+1. docker run -d -p 8082:8080 --name mytomcatc1 mytomcatimg1 (use this)
+
+2. docker exec -it mytomcatc1  /bin/bash
+
+
+----------------------------------------------------------------------
+
+Volume Lab
+
+docker volume ls
+docker volume create volumename
+docker volume inspect volumename
+docker volume prune volumename
+docker pull jenkins
+
+
+docker run --name myjenkinsc1 -v myhexavolume1:/var/jenkins_home -p 8080:8080 -p 50000:50000 jenkins
+
+Create a jenkins Job
+
+stop and remove the container myjenkinsc1
+
+
+docker run --name myjenkinsc2 -v myhexavolume1:/var/jenkins_home -p 8080:8080 -p 50000:50000 jenkins
+
+bind mount
+
+docker run -u root --name testjenkins4(its container name)-v /opt/softwares/Jenkins_Home:/var/jenkins_home -p 8082:8080 -p 40000:50000 jenkins
+
+docker run -u root --name testjenkins4 -v /mnt/MyAzureFileShare:/var/jenkins_home -p 8089:8080 -p 41000:50000 jenkins
+
+/mnt/MyAzureFileShare/
+------------------------------------------------------------------------------------
+
+docker network labs
+
+step-1: Create a Centos Docker container and install net tools.
+
+docker run -it --name centosc1 centos /bin/bash
+yum install -y net-tools
+
+ 
+
+Step-2 Check the IP address and hostname.
+
+
+ifconfig
+cat /etc/hosts
+hostname
+
+
+Exit the container using control-D.
+
+Step-3:  Commit the container to an image
+
+docker commit centos centos-net
+docker images
+dockerrm centos
+
+ Step-4:  Create a bridge network and find its IP range.
+
+
+docker network create hexanet
+docker network ls
+docker network inspect hexanet
+ 
+Run the centos container with the new network.
+
+docker run -it --rm --network hexanet --name centos-net c/bin/bash
+
+Check the IP address and hostname.
+
+
+ifconfig
+cat /etc/hosts
+hostname
+
+
+Exit the container with control-D.
+
+
+Step-5:  Start a new container using the default network.
+
+docker run -it --rm --name centos centos-net /bin/bash
+ 
+Check the IP address and hostname.
+
+ifconfig
+cat /etc/hosts
+hostname
+
+ 
+Exit the container with control-D.
+ 
+
+---------------------------------------------------------------------------------
+
+
+
+
+to check port of running container
+
+docker inspect --format='{{range $p, $conf := .NetworkSettings.Ports}} {{$p}} -> {{(index $conf 0).HostPort}} {{end}}' $INSTANCE_ID
+
+--------------------------------------------------------------------------
+
+to check the log of running container
+
+
+docker inspect --format='{{.LogPath}}'
+
+----------------------------------------------------------------------------------------------------
+
+to use custom subnet
+
+docker network create --driver overlay --subnet 10.0.9.0/24 
+  my-multi-host-network
+
+-------------------------------------------------------------------------------------------
+
+
+
+
+Docker Compose
+
+
+Installation of Compose
+
+
+goto this url
+
+https://github.com/docker/compose/releases
+
+
+Step-1:    curl -L https://github.com/docker/compose/releases/download/1.24.0-rc1/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+
+Step-2:  chmod +x /usr/local/bin/docker-compose
+
+Step-3: docker-compose --version
+
+
+
+
+
+----------------------------------------------------------------------------------
+
+
+
+Lab1----Docker compose-----containers---services
+
+
+
+Step-1:  Create a yaml file in the name of   docker-compose.yml
+
+
+version: '3.7'
+
+services:
+
+    webservers:
+       image: nginx
+       ports:
+       - 9090:80/tcp
+       
+    database:
+       image: redis
+       ports:
+       - 6379:6379/tcp
+
+Step-2: Validate the docker compose
+
+Being the current location
+
+
+docker-compose config
+
+
+Step-3:  docker-compose ps or docker ps
+
+
+Step-4 to start service(containers services)
+
+docker-compose up -d
+
+Step-5:  to stop the services
+
+docker-compose down
+
+**************we need to execute all this only under current path of docker-compose.yml
+
+-d, --detach               Detached mode: Run containers in the background,
+                               print new container names. 
+
+-------------------------------
+
+
+lab-2  docker-compose
+
+
+version: '3.7'
+
+services:
+
+    webservers:
+       image: nginx
+       ports:
+       - 9090:80/tcp
+   
+    appservers:
+       image: tomcat
+       ports:
+       - 8082:8080
+       volumes:
+       - /opt/dockerlabs/composelab4_tomcat/supermarket.war:/usr/local/tomcat/webapps/supermarket.war
+       
+       
+    database:
+       image: redis
+       ports:
+       - 6379:6379/tcp
+
+-------------------------------------------------------------------------------
+
+to download the supermarket
+
+git clone https://github.com/devopstraining4/tomcatsupermarket.git
+
+----------------------------------------------------------------------------------------------
+
+
+
+
+Docker Registry 
+
+
+Step-1: Pull a recent version of the Centos Linux container.
+
+docker pull registry:2
+
+Step-2:  Run the registry in a new Docker container. Expose port 5000.
+
+docker run -d -p 5000:5000 --restart=always --name registry registry:2
+
+Step-3: Pull another image and store it in the local registry.Pull a new image from Docker hub.
+
+docker pull ubuntu
+
+Step-4: Tag the image for the local registry.
+
+docker tag ubuntu localhost:5000/ubuntu
+
+Step-5: Push the image to the local registry.
+
+docker push localhost:5000/Ubuntu
+
+
+Step-6: Remove the image from the local cache.
+
+docker rmi ubuntu
+
+
+
+Step-7:  docker images
+
+Pull the image from the local registry.
+
+docker pull localhost:5000/ubuntu
+
+Confirm it is in the local cache.
+
+docker images
+
+Step-8:  Run the new image.
+
+docker run -it --rm localhost:5000/ubuntu /bin/bash
+
+-------------------------------
+
+
+Labs on ticketing
+
+Step-1:  Create a docker files/jtrac/2
+
+FROM centos:latest
+RUN yum install -y wget
+RUN yum install -y zip
+RUN cd /tmp && wget -q --no-check-certificate --no-cookies \
+   --header "Cookie: oraclelicense=accept-securebackup-cookie" \ 
+https://download.oracle.com/otn-pub/java/jdk/8u201-b09/42970487e3af4f5aa5bca3f542482c60/jdk-8u201-linux-x64.rpm
+RUN rpm -i /tmp/jdk*linux-x64.rpm
+ENV JAVA_HOME=/usr/java/latest
+RUN cd /tmp && wget https://sourceforge.net/projects/j-trac/files/jtrac/2.1.0/jtrac-2.1.0.zip
+RUN yum install -y unzip
+RUN cd /opt && unzip /tmp/jtrac*.zip
+RUN cd /opt/jtrac && mv start.bat start.sh && chmod +x start.sh
+RUN rm /tmp/jdk*linux-x64.rpm /tmp/jtrac*.zip
+WORKDIR /opt/jtrac
+CMD ./start.sh
+
+
+Step-2:  docker build -t jtrac .
+Step-3:    docker run -d --name jtrac -p 8080:80 jtrac
+
+check the docker ps
+
+Step-4:  URL externalip:8080/jtrac 
+Log in as admin with passord  admin
+
+
+Start creating tickets
+
+---------------------------------------------------------
+
+Docker Linking
+
+
+Step 1----Create a Docker network for puppet.
+
+docker network create puppet
+
+
+docker network ls
+
+
+Step 2 ----Pull the puppet images.
+
+docker pull puppet/puppetserver-standalone
+docker pull puppet/puppet-agent-alpine
+docker images
+
+Step 3 ----Start the puppet server.
+
+docker run --net puppet -d --name puppetserver --hostname puppet puppet/puppetserver-standalone
+
+docker exec -it <container name> /bin/bash
+docker ps
+
+We need to ensure that the server is running. Extract the logs until you see the message:
+
+Puppet Server has successfully started and is now ready to handle requests
+docker logs puppetserver
+
+Step 4 ----Start the puppet agent. It will connect to the server and perform a certificate exchange. Check out the output.
+
+docker run --rm --net puppet --link=puppetserver:puppet puppet/puppet-agent-alpine
+
+Step 5 -----Now let's find out what package puppet is managing.
+
+docker run --rm --net puppet --link=puppetserver:puppet puppet/puppet-agent-alpine resource package
+
+Step 6 ------clean up.
+
+docker rm -f puppetserver
+
+-----------------------------
